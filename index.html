@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Elias Thorne | Fine Art Photography</title>
-    <!-- Version: 1.0.4 - Optimized Sync -->
+    <!-- Version: 1.0.5 - Universal Sync -->
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Google Fonts -->
@@ -92,7 +92,7 @@
                 <div class="slider-item slider-skeleton"></div>
                 <div class="slider-item slider-skeleton"></div>
             </div>
-            <div id="sync-status" class="text-center sync-status">Connecting to Drive...</div>
+            <div id="sync-status" class="text-center sync-status">Initial Sync...</div>
         </div>
     </section>
 
@@ -125,7 +125,7 @@
             const sliderContainer = document.getElementById('dynamic-slider');
             const statusLabel = document.getElementById('sync-status');
             
-            // Highly reliable proxies
+            // Reliable proxies
             const proxies = [
                 `https://corsproxy.io/?${encodeURIComponent('https://drive.google.com/drive/folders/' + folderId)}`,
                 `https://api.allorigins.win/get?url=${encodeURIComponent('https://drive.google.com/drive/folders/' + folderId)}`
@@ -135,7 +135,7 @@
 
             for (let proxy of proxies) {
                 try {
-                    statusLabel.innerText = `Syncing via ${proxy.includes('corsproxy') ? 'Primary' : 'Secondary'}...`;
+                    statusLabel.innerText = "Syncing Cloud Assets...";
                     const response = await fetch(proxy);
                     if (proxy.includes('allorigins')) {
                         const data = await response.json();
@@ -143,30 +143,23 @@
                     } else {
                         html = await response.text();
                     }
-                    if (html && (html.includes('image/') || html.includes('["' + folderId + '"]'))) break; 
-                } catch (e) { console.error("Proxy failed:", proxy); }
+                    if (html && html.includes('image/')) break; 
+                } catch (e) { console.error("Sync partial error", e); }
             }
 
             if (!html) {
-                statusLabel.innerText = "Sync delayed. Please host on a server for full performance.";
+                statusLabel.innerText = "Sync delayed. Check back in a moment.";
                 return;
             }
 
-            // Universal pattern for Google Drive Image IDs
-            // Matches [null,"ID"],null,null,null,"image/ OR "ID",["FOLDER_ID"]
-            const cleanHtml = html.replace(/&quot;/g, '"');
-            const patterns = [
-                /\[null,"([a-zA-Z0-9_-]{28,})"\],null,null,null,"image\//g,
-                new RegExp(`"([a-zA-Z0-9_-]{28,})",\\["${folderId}"\\]`, 'g')
-            ];
-
+            // UNIVERSAL REGEX: Handles both standard and escaped quotes
+            // Matches: [null,"ID"],null,null,null,"image/  OR  [null,&quot;ID&quot;],null,null,null,&quot;image/
+            const regex = /(?:"|&quot;)([a-zA-Z0-9_-]{28,})(?:"|&quot;)\]\s*,\s*null\s*,\s*null\s*,\s*null\s*,\s*(?:"|&quot;)image\//g;
             const ids = [];
-            patterns.forEach(pattern => {
-                let match;
-                while ((match = pattern.exec(cleanHtml)) !== null) {
-                    ids.push(match[1]);
-                }
-            });
+            let match;
+            while ((match = regex.exec(html)) !== null) {
+                ids.push(match[1]);
+            }
 
             const uniqueIds = [...new Set(ids)];
             if (uniqueIds.length > 0) {
@@ -174,13 +167,14 @@
                 uniqueIds.forEach(id => {
                     const div = document.createElement('div');
                     div.className = 'slider-item';
-                    div.innerHTML = `<img src="https://drive.google.com/thumbnail?id=${id}&sz=w1000" alt="Drive Photo">`;
+                    // Use verified direct image URL
+                    div.innerHTML = `<img src="https://lh3.googleusercontent.com/u/0/d/${id}" alt="Drive Photo">`;
                     sliderContainer.appendChild(div);
                 });
-                statusLabel.innerText = `Successfully synced ${uniqueIds.length} images from Drive.`;
+                statusLabel.innerText = `Synced ${uniqueIds.length} images.`;
                 AOS.refresh();
             } else {
-                statusLabel.innerText = "Sync Active: No images found in folder data.";
+                statusLabel.innerText = "Sync active. No new images found in folder.";
             }
         }
         window.addEventListener('load', loadDriveImages);
