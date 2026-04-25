@@ -68,23 +68,13 @@
     <section id="gallery" class="py-5 mt-5">
         <div class="container">
             <div class="row mb-5 text-center" data-aos="fade-up">
-                <div class="col-lg-8 mx-auto">
-                    <h2 class="display-4">Visual <span class="text-accent">Stories</span></h2>
-                </div>
+                <div class="col-lg-8 mx-auto"><h2 class="display-4">Visual <span class="text-accent">Stories</span></h2></div>
             </div>
             <div class="row g-4">
-                <div class="col-md-6 col-lg-4" data-aos="zoom-in" data-aos-delay="100">
-                    <div class="gallery-item"><img src="assets/portrait.png" alt="Portrait"><div class="gallery-overlay"><div><span class="badge bg-accent text-dark mb-2">Portrait</span><h3>Silent Echoes</h3></div></div></div>
-                </div>
-                <div class="col-md-6 col-lg-8" data-aos="zoom-in" data-aos-delay="200">
-                    <div class="gallery-item" style="height: 400px;"><img src="assets/landscape.png" alt="Landscape"><div class="gallery-overlay"><div><span class="badge bg-accent text-dark mb-2">Landscape</span><h3>Misty Horizons</h3></div></div></div>
-                </div>
-                <div class="col-md-6 col-lg-8" data-aos="zoom-in" data-aos-delay="300">
-                    <div class="gallery-item" style="height: 500px;"><img src="assets/fashion.png" alt="Fashion"><div class="gallery-overlay"><div><span class="badge bg-accent text-dark mb-2">Fashion</span><h3>Velvet Motion</h3></div></div></div>
-                </div>
-                <div class="col-md-6 col-lg-4" data-aos="zoom-in" data-aos-delay="400">
-                    <div class="gallery-item"><img src="assets/architecture.png" alt="Architecture"><div class="gallery-overlay"><div><span class="badge bg-accent text-dark mb-2">Architecture</span><h3>Concrete Symmetry</h3></div></div></div>
-                </div>
+                <div class="col-md-6 col-lg-4" data-aos="zoom-in" data-aos-delay="100"><div class="gallery-item"><img src="assets/portrait.png" alt="Portrait"><div class="gallery-overlay"><div><span class="badge bg-accent text-dark mb-2">Portrait</span><h3>Silent Echoes</h3></div></div></div></div>
+                <div class="col-md-6 col-lg-8" data-aos="zoom-in" data-aos-delay="200"><div class="gallery-item" style="height: 400px;"><img src="assets/landscape.png" alt="Landscape"><div class="gallery-overlay"><div><span class="badge bg-accent text-dark mb-2">Landscape</span><h3>Misty Horizons</h3></div></div></div></div>
+                <div class="col-md-6 col-lg-8" data-aos="zoom-in" data-aos-delay="300"><div class="gallery-item" style="height: 500px;"><img src="assets/fashion.png" alt="Fashion"><div class="gallery-overlay"><div><span class="badge bg-accent text-dark mb-2">Fashion</span><h3>Velvet Motion</h3></div></div></div></div>
+                <div class="col-md-6 col-lg-4" data-aos="zoom-in" data-aos-delay="400"><div class="gallery-item"><img src="assets/architecture.png" alt="Architecture"><div class="gallery-overlay"><div><span class="badge bg-accent text-dark mb-2">Architecture</span><h3>Concrete Symmetry</h3></div></div></div></div>
             </div>
         </div>
     </section>
@@ -134,7 +124,6 @@
             const folderId = '1ydYAoJB4l6AaZ6lmXSfuqbn6pHTc_5xT';
             const sliderContainer = document.getElementById('dynamic-slider');
             
-            // Multiple proxies to ensure reliability
             const proxies = [
                 `https://corsproxy.io/?${encodeURIComponent('https://drive.google.com/drive/folders/' + folderId)}`,
                 `https://api.allorigins.win/get?url=${encodeURIComponent('https://drive.google.com/drive/folders/' + folderId)}`
@@ -144,7 +133,6 @@
 
             for (let proxy of proxies) {
                 try {
-                    console.log("Trying proxy:", proxy);
                     const response = await fetch(proxy);
                     if (proxy.includes('allorigins')) {
                         const data = await response.json();
@@ -152,25 +140,23 @@
                     } else {
                         html = await response.text();
                     }
-                    if (html && html.includes(folderId)) break; 
-                } catch (e) {
-                    console.error("Proxy failed:", proxy, e);
-                }
+                    if (html && html.includes('image/')) break; 
+                } catch (e) { console.error("Proxy failed:", proxy); }
             }
 
             if (!html) {
-                sliderContainer.innerHTML = `
-                    <div class="error-msg text-center w-100">
-                        <p class="mb-2">⚠️ <strong>Sync Error:</strong> The browser blocked the cloud connection.</p>
-                        <p class="text-muted small">This is common with public proxies. Please try refreshing or check your folder's public sharing settings.</p>
-                    </div>`;
+                sliderContainer.innerHTML = '<div class="error-msg text-center w-100"><p>⚠️ <strong>Sync Error:</strong> Could not connect to Google Drive.</p></div>';
                 return;
             }
 
-            const regex = new RegExp(`"([a-zA-Z0-9_-]{28,})",\\["${folderId}"\\]`, 'g');
+            // High-reliability pattern for image file IDs
+            // Pattern: [null,"FILE_ID"],null,null,null,"image/
+            // Handles both standard and escaped (&quot;) HTML
+            const cleanHtml = html.replace(/&quot;/g, '"');
+            const regex = /\[null,"([a-zA-Z0-9_-]{28,})"\],null,null,null,"image\//g;
             const ids = [];
             let match;
-            while ((match = regex.exec(html)) !== null) {
+            while ((match = regex.exec(cleanHtml)) !== null) {
                 ids.push(match[1]);
             }
 
